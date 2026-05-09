@@ -1,0 +1,69 @@
+{
+  "comments": "SDA telemetry ingest: CSV -> JSON -> Kafka (rso.telemetry).",
+  "flowVersion": "0.1.0",
+  "components": [
+    {
+      "name": "GetFile - CSV inbox",
+      "type": "org.apache.nifi.processors.standard.GetFile",
+      "properties": {
+        "Input Directory": "/data/in",
+        "Keep Source File": "false",
+        "File Filter": "[^.].*\\.csv"
+      },
+      "schedulingPeriod": "5 sec"
+    },
+    {
+      "name": "SplitRecord - CSV to JSON",
+      "type": "org.apache.nifi.processors.standard.SplitRecord",
+      "properties": {
+        "Records Per Split": "1",
+        "Record Reader": "CSVReader",
+        "Record Writer": "JsonRecordSetWriter"
+      }
+    },
+    {
+      "name": "UpdateAttribute - kafka.key",
+      "type": "org.apache.nifi.processors.attributes.UpdateAttribute",
+      "properties": {
+        "kafka.key": "${rsoId}"
+      }
+    },
+    {
+      "name": "PublishKafka - rso.telemetry",
+      "type": "org.apache.nifi.processors.kafka.pubsub.PublishKafka_2_6",
+      "properties": {
+        "Kafka Brokers": "kafka:29092",
+        "Topic Name": "rso.telemetry",
+        "Delivery Guarantee": "Guarantee Replicated Delivery",
+        "Use Transactions": "false",
+        "Kafka Key": "${kafka.key}",
+        "Use Record Reader/Writer": "true",
+        "Record Reader": "JsonTreeReader",
+        "Record Writer": "JsonRecordSetWriter"
+      }
+    },
+    {
+      "name": "PutFile - success archive",
+      "type": "org.apache.nifi.processors.standard.PutFile",
+      "properties": {
+        "Directory": "/data/out",
+        "Conflict Resolution Strategy": "replace"
+      }
+    },
+    {
+      "name": "PutFile - error",
+      "type": "org.apache.nifi.processors.standard.PutFile",
+      "properties": {
+        "Directory": "/data/error",
+        "Conflict Resolution Strategy": "replace"
+      }
+    }
+  ],
+  "connections": [
+    {"source": "GetFile - CSV inbox", "destination": "SplitRecord - CSV to JSON", "relationship": "success"},
+    {"source": "SplitRecord - CSV to JSON", "destination": "UpdateAttribute - kafka.key", "relationship": "splits"},
+    {"source": "UpdateAttribute - kafka.key", "destination": "PublishKafka - rso.telemetry", "relationship": "success"},
+    {"source": "PublishKafka - rso.telemetry", "destination": "PutFile - success archive", "relationship": "success"},
+    {"source": "PublishKafka - rso.telemetry", "destination": "PutFile - error", "relationship": "failure"}
+  ]
+}
