@@ -13,3 +13,4 @@ mvnw.cmd
 logs/
 .env
 .env.local
+.work-*/

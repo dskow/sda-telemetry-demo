@@ -77,12 +77,28 @@ Prometheus is at http://localhost:9090, NiFi at https://localhost:8443
 # Build the jar
 docker run --rm -v "$PWD":/w -w /w maven:3.9.9-eclipse-temurin-21 mvn -B package
 
-# Run only unit tests
+# Run unit tests
 docker run --rm -v "$PWD":/w -w /w maven:3.9.9-eclipse-temurin-21 mvn -B test
-
-# Run the integration test (uses embedded Kafka)
-docker run --rm -v "$PWD":/w -w /w maven:3.9.9-eclipse-temurin-21 mvn -B verify
 ```
+
+### End-to-end verification
+
+The Kafka round-trip is verified through the docker-compose stack rather than an
+embedded-broker integration test, because that's the closest proxy to a real
+deployed environment. After `docker compose up --build`:
+
+```bash
+# Drop a sensor CSV onto the NiFi inbox -- it routes to Kafka -> consumer -> catalog
+cp nifi/data/in/sample.csv "nifi/data/in/feed-$(date +%s).csv"
+
+# Within ~10 seconds the catalog should reflect the records
+curl -s http://localhost:8080/api/rso | jq
+```
+
+A `@SpringBootTest` + `@EmbeddedKafka` stub of this round-trip is checked in at
+`src/test/java/com/skowronski/sda/telemetry/kafka/TelemetryFlowIT.java` but is
+`@Disabled` -- the embedded broker race-conditions with the listener container
+start-up in CI-style runs.
 
 ## Operational docs
 
