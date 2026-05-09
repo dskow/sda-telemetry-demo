@@ -44,6 +44,35 @@ control. No new functionality permitted in the same change.
 5. Reference the CVE link and CVSS score in the PR body.
 6. After merge, follow SOP-01 and tag the release as a patch (`v0.X.Y` -> `v0.X.(Y+1)`).
 
+### When to bump and when to stay
+
+OSS end-of-life (EOL) does not automatically mean "must upgrade." For a defense
+or intelligence-community sustainment program, the version-bump decision tree
+is:
+
+- **Commercial extended support is active.** Broadcom/VMware Tanzu Spring
+  Runtime, Red Hat OpenJDK / JBoss EAP, AWS Corretto, etc. provide security
+  patches past the OSS EOL window. If the program holds a subscription, the
+  baseline can stay on the older minor version and continue to receive
+  back-ported security fixes from the vendor. The patch workflow is the same
+  as above; the source of patches is the vendor's private repository instead
+  of Maven Central.
+- **Authority to Operate (ATO) baseline is frozen.** Once a system is
+  accredited, changing a major component (Spring, Java, OS) requires
+  reaccreditation. Programs deliberately stay on a known-good, vendor-patched
+  version and only bump when the security delta forces it. A version bump on
+  a frozen baseline is a *project* (multi-sprint), not a routine SOP-03 patch.
+- **OSS-only with no commercial subscription, no ATO freeze.** Bump to the
+  current OSS-supported minor at the next scheduled patch window. This is the
+  posture this demo uses: see `pom.xml` history for the 3.3.5 -> 4.0.6 bump
+  applied 2026-05-09, six weeks before the 3.5 OSS EOL would have boxed us
+  into a forced upgrade window.
+
+When in doubt, ask the program's Information System Security Officer (ISSO)
+which path applies before opening a bump PR. The wrong move is to assume the
+OSS calendar is the binding one when the program's contract or accreditation
+is the binding one.
+
 ## SOP-04: Add or modify a Kafka topic
 
 1. Topics are managed via `kafka-init` in `docker-compose.yml` for local;
